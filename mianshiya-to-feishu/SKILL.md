@@ -163,9 +163,9 @@ magick input.webp output.png                        # Linux/ImageMagick
 <回答重点正文>
 
 ## 扩展知识
-### <扩展知识小节标题1>
+### <原文小节标题，保留编号前缀，如：1）Shuffle 的具体过程>
 <内容>
-### <扩展知识小节标题2>
+### <原文小节标题，保留编号前缀，如：2）性能优化的技巧>
 <内容>
 
 ## 面试官追问
@@ -178,7 +178,7 @@ magick input.webp output.png                        # Linux/ImageMagick
 - 难度：编号下方的"简单"/"中等"/"困难"
 - 标签：难度下方的标签词
 - 回答重点：从"回答重点"到"扩展知识"之间
-- 扩展知识：从"扩展知识"到"面试官追问"（无追问小节时到"作者"或"上一题"）之间，按小节拆分，常见形式为 `1）小节标题：`
+- 扩展知识：从“扩展知识”到“面试官追问”（无追问小节时到“作者”或“上一题”）之间，按小节拆分，常见形式为 `1）小节标题：`。**小节标题必须保留原文的编号前缀**（如 `1）Shuffle 的具体过程：` → `### 1）Shuffle 的具体过程`），不得丢弃、改写或重新编号；原文小节无编号时才使用纯标题
 - 面试官追问：从"面试官追问"到"作者"或"上一题"之间，每个"提问："开头为一个追问。**页面没有"面试官追问"小节时直接省略该节，不算异常。**
 
 将 Markdown 保存到工作目录，文件名如 `question_<编号>.md`。
@@ -235,7 +235,7 @@ lark-cli docs +update \
 ### Step 8：验证
 
 1. `lark-cli wiki +node-list --space-id <space_id> --parent-node-token <目标node_token>` 确认文档已创建在正确目录下（**`--space-id` 必填**，节点列表在返回的 `data.nodes[]` 中）
-2. `lark-cli docs +fetch --doc <document_id> --doc-format markdown` 回读验证内容完整
+2. `lark-cli docs +fetch --doc <document_id> --doc-format markdown` 回读验证内容完整，且扩展知识小节标号与原文一致
 3. 有配图时检查图片块存在且位置正确
 
 ### Step 9：交付
