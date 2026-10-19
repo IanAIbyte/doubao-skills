@@ -116,11 +116,29 @@ lark-cli wiki +node-get --node-token "<用户给的URL或token>" --as user --for
   3. 已存在 → 提示"建议挂到已有节点 '<名称>'"；不存在 → 提示"建议新建 '<名称>' 节点"（`wiki +node-create`）。用户改指其他目录时回到上一分支重新解析。
   4. 仅当用户明确回复"用默认"时，才使用配置表的当前默认 node_token。
 
-### Step 1：浏览器打开页面
+### Step 1：查重（已整理过则跳过）
+
+1. 从面试鸭链接取出题目 id：路径 `question/<id>` 中的 `<id>`。
+2. 用 Step 0 的 node_token 与 space_id 列出目标目录已有文档（节点列表含 `title` 与 `obj_token`）：
+
+```bash
+lark-cli wiki +node-list --space-id <space_id> --parent-node-token <node_token> --as user --format json
+```
+
+3. 目录为空 → 直接进入 Step 2。
+4. 否则逐个回读子文档的“来源”行，比对题目 id（不开浏览器即可判定；已打开页面时，节点标题与题目标题完全一致也可直接判定）：
+
+```bash
+lark-cli docs +fetch --doc <obj_token> --as user --format json -q '.data.document.content' | grep -o 'question/[0-9]*'
+```
+
+5. 已存在同一道题 → 向用户提示"该题已整理过：<标题>（wiki 链接用 node_token 拼接）"，**跳过后续所有步骤**；仅当用户明确要求重新整理时才继续，并先与用户确认是删旧建新还是保留旧文档。
+
+### Step 2：浏览器打开页面
 
 `open(<面试鸭链接>)`。如果弹出登录弹窗，找到 Close 关闭按钮并点击。
 
-### Step 2：验证登录状态
+### Step 3：验证登录状态
 
 `read_text()` 获取页面文本，检查：
 - 不存在"点击登录查看完整内容"按钮
@@ -128,7 +146,7 @@ lark-cli wiki +node-get --node-token "<用户给的URL或token>" --as user --for
 
 如果未登录，提示用户先登录后再继续。
 
-### Step 3：提取页面文本与格式信息
+### Step 4：提取页面文本与格式信息
 
 `read_text()` 保存到工作目录 `raw_text.txt`。
 
@@ -137,11 +155,11 @@ lark-cli wiki +node-get --node-token "<用户给的URL或token>" --as user --for
 - 列表类型：遍历正文 `ol`/`ul`，记录每个列表的首项文本，用于还原有序/无序
 - 小节标号：确认编号的准确字形（半角 `1)` 还是全角 `1）`、有无空格、末尾有无冒号）
 
-### Step 4：识别并下载配图
+### Step 5：识别并下载配图
 
 1. `list_images()` 获取页面所有图片。
 2. 筛选正文配图（排除 logo、头像、等级图标等）：正文配图域名通常为 `pic.code-nav.cn`，路径含 `question_picture`；记录每张配图的 URL 和在页面中的位置（回答重点后 / 某个扩展知识小节后）。
-3. **若没有任何符合条件的配图（纯文字题很常见），判定为本题无配图，跳过 Step 7。**
+3. **若没有任何符合条件的配图（纯文字题很常见），判定为本题无配图，跳过 Step 8。**
 4. `download(<img_url>)` 下载。
 5. webp 转 png（飞书文档对 webp 支持不完善）：
 
@@ -152,7 +170,7 @@ magick input.webp output.png                        # Linux/ImageMagick
 
 6. 获取图片尺寸并统一复制到工作目录 `images/` 子目录下。
 
-### Step 5：整理内容为结构化 Markdown
+### Step 6：整理内容为结构化 Markdown
 
 从原始文本中提取以下部分，组织为 Markdown：
 
@@ -185,12 +203,12 @@ magick input.webp output.png                        # Linux/ImageMagick
 - 回答重点：从"回答重点"到"扩展知识"之间
 - 扩展知识：从“扩展知识”到“面试官追问”（无追问小节时到“作者”或“上一题”）之间，按小节拆分。**小节标号逐字符还原原文**（面试鸭通常为半角 `1) ` + 标题，标题加粗、末尾全角冒号），写作正文段落而非 `###` 标题；不得丢弃、改写或重新编号。原文小节无编号时才用 `###` 标题
 - 面试官追问：从“面试官追问”到“作者”或“上一题”之间，每个“提问：”开头为一个追问。**页面没有“面试官追问”小节时直接省略该节，不算异常。**
-- 行内代码：原答案中的代码名词（如 `map`、`filter`、`reduceByKey`）保留行内代码格式。注意纯文本提取不含此信息，需按 Step 3 的 DOM 查询核对。
+- 行内代码：原答案中的代码名词（如 `map`、`filter`、`reduceByKey`）保留行内代码格式。注意纯文本提取不含此信息，需按 Step 4 的 DOM 查询核对。
 - 列表类型：各小节内容的有序/无序列表按原文还原（innerText 看不出列表标记，同样需 DOM 查询）。
 
 将 Markdown 保存到工作目录，文件名如 `question_<编号>.md`。
 
-### Step 6：创建飞书文档
+### Step 7：创建飞书文档
 
 `--content "@file"` 只接受当前工作目录的相对路径（绝对路径报 unsafe file path），先 cd 到工作目录再执行：
 
@@ -207,7 +225,7 @@ lark-cli docs +create \
 
 从返回值中记录 `document_id` 和 `url`。
 
-### Step 7：插入配图（左对齐）
+### Step 8：插入配图（左对齐）
 
 **本题无配图时跳过本步。**
 
@@ -241,13 +259,13 @@ lark-cli docs +update \
 - 概念对比图 → 回答重点之后、扩展知识之前
 - 演进路径/流程图 → 对应扩展知识小节的文字之后
 
-### Step 8：验证
+### Step 9：验证
 
 1. `lark-cli wiki +node-list --space-id <space_id> --parent-node-token <目标node_token>` 确认文档已创建在正确目录下（**`--space-id` 必填**，节点列表在返回的 `data.nodes[]` 中）
 2. `lark-cli docs +fetch --doc <document_id>` 回读验证内容完整，且小节标号、行内代码、列表类型与原文一致
 3. 有配图时检查图片块存在且位置正确
 
-### Step 9：交付
+### Step 10：交付
 
 以当前 agent 的常规方式交付飞书文档链接（如 Markdown 链接）。如果用户要求截图，同时交付滚动截图。
 
