@@ -128,9 +128,14 @@ lark-cli wiki +node-get --node-token "<用户给的URL或token>" --as user --for
 
 如果未登录，提示用户先登录后再继续。
 
-### Step 3：提取页面文本
+### Step 3：提取页面文本与格式信息
 
 `read_text()` 保存到工作目录 `raw_text.txt`。
+
+纯文本会丢失三类格式信息，需再用 DOM 查询（ego-browser 用 `page.evaluate`）补齐：
+- 行内代码：遍历正文 `code` 元素（排除 `pre` 内的代码块、评论区和 markdown 语法帮助浮层），记录每处代码及其所在句子的上下文
+- 列表类型：遍历正文 `ol`/`ul`，记录每个列表的首项文本，用于还原有序/无序
+- 小节标号：确认编号的准确字形（半角 `1)` 还是全角 `1）`、有无空格、末尾有无冒号）
 
 ### Step 4：识别并下载配图
 
@@ -163,9 +168,9 @@ magick input.webp output.png                        # Linux/ImageMagick
 <回答重点正文>
 
 ## 扩展知识
-### <原文小节标题，保留编号前缀，如：1）Shuffle 的具体过程>
+1) **<原文小节标题>**：
 <内容>
-### <原文小节标题，保留编号前缀，如：2）性能优化的技巧>
+2) **<原文小节标题>**：
 <内容>
 
 ## 面试官追问
@@ -178,14 +183,16 @@ magick input.webp output.png                        # Linux/ImageMagick
 - 难度：编号下方的"简单"/"中等"/"困难"
 - 标签：难度下方的标签词
 - 回答重点：从"回答重点"到"扩展知识"之间
-- 扩展知识：从“扩展知识”到“面试官追问”（无追问小节时到“作者”或“上一题”）之间，按小节拆分，常见形式为 `1）小节标题：`。**小节标题必须保留原文的编号前缀**（如 `1）Shuffle 的具体过程：` → `### 1）Shuffle 的具体过程`），不得丢弃、改写或重新编号；原文小节无编号时才使用纯标题
-- 面试官追问：从"面试官追问"到"作者"或"上一题"之间，每个"提问："开头为一个追问。**页面没有"面试官追问"小节时直接省略该节，不算异常。**
+- 扩展知识：从“扩展知识”到“面试官追问”（无追问小节时到“作者”或“上一题”）之间，按小节拆分。**小节标号逐字符还原原文**（面试鸭通常为半角 `1) ` + 标题，标题加粗、末尾全角冒号），写作正文段落而非 `###` 标题；不得丢弃、改写或重新编号。原文小节无编号时才用 `###` 标题
+- 面试官追问：从“面试官追问”到“作者”或“上一题”之间，每个“提问：”开头为一个追问。**页面没有“面试官追问”小节时直接省略该节，不算异常。**
+- 行内代码：原答案中的代码名词（如 `map`、`filter`、`reduceByKey`）保留行内代码格式。注意纯文本提取不含此信息，需按 Step 3 的 DOM 查询核对。
+- 列表类型：各小节内容的有序/无序列表按原文还原（innerText 看不出列表标记，同样需 DOM 查询）。
 
 将 Markdown 保存到工作目录，文件名如 `question_<编号>.md`。
 
 ### Step 6：创建飞书文档
 
-`--content "@file"` 只接受当前工作目录的相对路径（绝对路径报 unsafe file path），先 cd 到工作目录再执行；正文中含 Markdown 特殊字符时按 lark-doc 的 markdown 转义规范处理（`lark-cli skills read lark-doc` 可查）：
+`--content "@file"` 只接受当前工作目录的相对路径（绝对路径报 unsafe file path），先 cd 到工作目录再执行：
 
 ```bash
 lark-cli docs +create \
@@ -195,6 +202,8 @@ lark-cli docs +create \
   --as user \
   --format json
 ```
+
+**扩展知识小节带 `N)` 编号时必须改用 XML 创建**（去掉 `--doc-format markdown`）：markdown 行首的 `1) ` 会被解析为有序列表，丢掉字面标号。XML 内容要点：`<title>` 置标题；小节用 `<p>1) <b>标题</b>：</p>`；代码名词用 `<code>`；列表按原文用 `<ol>`/`<ul>`；代码块用 `<pre lang="python"><code>…</code></pre>`，块内换行写 `<br/>`。完整语法见 `lark-cli skills read lark-doc`（markdown 正文的转义规范也在此文档）。
 
 从返回值中记录 `document_id` 和 `url`。
 
@@ -235,7 +244,7 @@ lark-cli docs +update \
 ### Step 8：验证
 
 1. `lark-cli wiki +node-list --space-id <space_id> --parent-node-token <目标node_token>` 确认文档已创建在正确目录下（**`--space-id` 必填**，节点列表在返回的 `data.nodes[]` 中）
-2. `lark-cli docs +fetch --doc <document_id> --doc-format markdown` 回读验证内容完整，且扩展知识小节标号与原文一致
+2. `lark-cli docs +fetch --doc <document_id>` 回读验证内容完整，且小节标号、行内代码、列表类型与原文一致
 3. 有配图时检查图片块存在且位置正确
 
 ### Step 9：交付
